@@ -1,11 +1,26 @@
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <ifaddrs.h>
+#include <math.h>
+#include <memory.h>
+#include <net/if.h>
+#include <netdb.h>
+#include <netdb.h> 
+#include <netinet/in.h>
+#include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h> 
+#include <sys/stat.h>
+#include <sys/termios.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/un.h>
 
 void error(const char *msg)
 {
@@ -15,30 +30,21 @@ void error(const char *msg)
 
 int main(int argc, char *argv[])
 {
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+    int sockfd, n;
+    struct sockaddr_un serv_addr;
 
     char buffer[256];
-    if (argc < 3) {
-       fprintf(stderr, "usage %s hostname port\n", argv[0]);
+    if (argc < 2) {
+       fprintf(stderr, "usage %s hostname\n", argv[0]);
        exit(0);
     }
-    portno = atoi(argv[2]);
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
-    server = gethostbyname(argv[1]);
-    if (server == NULL) {
-        fprintf(stderr, "ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
+    memset(&serv_addr, 0, sizeof(struct sockaddr_un));
+    serv_addr.sun_family = AF_UNIX;
+    strcpy(serv_addr.sun_path, argv[1]);
+
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
         error("ERROR connecting");
     printf("Please enter the message: ");
