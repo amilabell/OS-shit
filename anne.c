@@ -30,36 +30,40 @@ int main(int argc, char *argv[])
     }
     
     if (argc > 1) {
-        printf("spock: ready to receive messages, captain.\n");
+        if (strcmp("receive", argv[1]) == 0){
+            printf("spock: ready to receive messages, captain.\n");
 
-        for(;;) { /* Spock never quits! */
-            if (msgrcv(msqid, &buf, sizeof buf.mtext, 0, 0) == -1) {
-                perror("msgrcv");
+            for(;;) { /* Spock never quits! */
+                if (msgrcv(msqid, &buf, sizeof buf.mtext, 0, 0) == -1) {
+                    perror("msgrcv");
+                    exit(1);
+                }
+                printf("spock: \"%s\"\n", buf.mtext);
+            }
+        } else if(strcmp("send", argv[1]) == 0){
+            printf("Enter lines of text, ^D to quit:\n");
+
+            buf.mtype = 1; /* we don't really care in this case */
+
+            while(fgets(buf.mtext, sizeof buf.mtext, stdin) != NULL) {
+                int len = strlen(buf.mtext);
+
+                /* ditch newline at end, if it exists */
+                if (buf.mtext[len-1] == '\n') buf.mtext[len-1] = '\0';
+
+                if (msgsnd(msqid, &buf, len+1, 0) == -1) /* +1 for '\0' */
+                    perror("msgsnd");
+            }
+
+            if (msgctl(msqid, IPC_RMID, NULL) == -1) {
+                perror("msgctl");
                 exit(1);
             }
-            printf("spock: \"%s\"\n", buf.mtext);
         }
-    } else {
-        printf("Enter lines of text, ^D to quit:\n");
-
-        buf.mtype = 1; /* we don't really care in this case */
-
-        while(fgets(buf.mtext, sizeof buf.mtext, stdin) != NULL) {
-            int len = strlen(buf.mtext);
-
-            /* ditch newline at end, if it exists */
-            if (buf.mtext[len-1] == '\n') buf.mtext[len-1] = '\0';
-
-            if (msgsnd(msqid, &buf, len+1, 0) == -1) /* +1 for '\0' */
-                perror("msgsnd");
-        }
-
-        if (msgctl(msqid, IPC_RMID, NULL) == -1) {
-            perror("msgctl");
-            exit(1);
-        }
-    }
-   
+    } else{
+        printf("Entweder send oder receive angeben\n");
+        exit (1);
+    } 
 
     return 0;
 }
